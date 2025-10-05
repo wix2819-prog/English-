@@ -1,0 +1,204 @@
+<!doctype html>
+<html lang="ar">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1">
+  <title>اختبار تفاعلي — عربي ↔ English</title>
+  <style>
+    :root{font-family: "Segoe UI", Tahoma, Geneva, Verdana, sans-serif;}
+    body{margin:0;padding:20px;background:#f7f8fb;color:#111;}
+    .container{max-width:900px;margin:0 auto;background:#fff;border-radius:10px;padding:20px;box-shadow:0 6px 18px rgba(30,30,80,0.06);}
+    h1{margin:0 0 10px;font-size:22px;text-align:center;}
+    p.lead{margin:6px 0 18px;text-align:center;color:#444;}
+    .tabs{display:flex;gap:8px;justify-content:center;margin-bottom:16px;flex-wrap:wrap;}
+    .tab{padding:8px 14px;border-radius:8px;border:1px solid #d6d9e6;background:#fff;cursor:pointer;}
+    .tab.active{background:#2b6df6;color:#fff;border-color:transparent;box-shadow:0 6px 14px rgba(43,109,246,0.18);}
+    .quiz{direction:rtl;}
+    .question{border:1px solid #eef0f6;padding:12px;border-radius:8px;margin-bottom:12px;background:#fcfdff;}
+    .q-text{font-weight:700;margin-bottom:8px;}
+    .options{display:flex;flex-direction:column;gap:8px;}
+    .opt{padding:10px;border-radius:8px;border:1px solid #e3e6f0;background:#fff;cursor:pointer;user-select:none;}
+    .opt.correct{border-color:#2ecc71;background:#ecfff3;}
+    .opt.wrong{border-color:#ff6b6b;background:#fff0f0;}
+    .feedback{margin-top:8px;font-weight:700;}
+    .controls{display:flex;gap:8px;justify-content:flex-end;margin-top:12px;}
+    button{padding:8px 12px;border-radius:8px;border:0;background:#2b6df6;color:#fff;cursor:pointer;}
+    button.secondary{background:#6b7280;}
+    .score{font-size:16px;font-weight:800;margin-top:12px;text-align:left;}
+    .small{font-size:13px;color:#666;margin-top:6px;}
+    footer{margin-top:18px;font-size:13px;color:#666;text-align:center;}
+    @media (max-width:600px){.controls{justify-content:center;}}
+  </style>
+</head>
+<body>
+  <div class="container">
+    <h1>اختبار تفاعلي — عربي ↔ English</h1>
+    <p class="lead">اختر الترجمة الصحيحة لكل كلمة — هنالك منظومان: <strong>من العربية إلى الإنجليزية</strong> و <strong>من الإنجليزية إلى العربية</strong>.</p>
+
+    <div class="tabs" role="tablist" aria-label="quiz tabs">
+      <div class="tab active" id="tab-ar" role="tab" tabindex="0">من العربية إلى الإنجليزية</div>
+      <div class="tab" id="tab-en" role="tab" tabindex="0">From English to Arabic</div>
+    </div>
+
+    <div id="quiz" class="quiz" aria-live="polite"></div>
+
+    <div class="controls">
+      <button id="shuffleBtn" class="secondary">إعادة ترتيب الأسئلة</button>
+      <button id="showScoreBtn">عرض النتيجة</button>
+      <button id="resetBtn" class="secondary">إعادة ضبط</button>
+    </div>
+
+    <div id="result" class="score" aria-atomic="true"></div>
+    <p class="small">ملاحظة: يمكنك اختيار إجابة واحدة لكل سؤال — ستحصل على تلوين فوري (أخضر = صحيح، أحمر = خطأ).</p>
+    <footer>تم الإنشاء تلقائيًا — يمكنك تنزيل صفحة HTML وحفظها وتشغيلها محليًا بدون إنترنت.</footer>
+  </div>
+
+<script>
+// بيانات الأسئلة (مبنية بعناية مع خيارات مضللة منطقية)
+const data = {
+  arToEn: [
+    {arabic: "أب", correct: "Father", options: ["Father","Neighbor","Carpenter","Butcher"]},
+    {arabic: "محاسب", correct: "Accountant", options: ["Actor","Accountant","Baker","Uncle"]},
+    {arabic: "عم", correct: "Uncle", options: ["Author","Uncle","Butcher","Burglar"]},
+    {arabic: "ممثل", correct: "Actor", options: ["Actor","Carpenter","Baker","Author"]},
+    {arabic: "عمة", correct: "Aunt", options: ["Aunt","Actress","Father","Neighbor"]},
+    {arabic: "ممثلة", correct: "Actress", options: ["Actress","Burglar","Accountant","Butcher"]},
+    {arabic: "مؤلف", correct: "Author", options: ["Author","Carpenter","Uncle","Baker"]},
+    {arabic: "خباز", correct: "Baker", options: ["Baker","Actor","Father","Burglar"]},
+    {arabic: "جار", correct: "Neighbor", options: ["Neighbor","Butcher","Accountant","Actress"]},
+    {arabic: "جزار", correct: "Butcher", options: ["Carpenter","Butcher","Author","Uncle"]},
+    {arabic: "لص منازل", correct: "Burglar", options: ["Burglar","Baker","Actor","Father"]},
+    {arabic: "نجار", correct: "Carpenter", options: ["Carpenter","Actress","Neighbor","Author"]}
+  ],
+  enToAr: [
+    {english: "Father", correct: "أب", options: ["أب","عمة","مؤلف","خباز"]},
+    {english: "Accountant", correct: "محاسب", options: ["ممثل","محاسب","نجار","جار"]},
+    {english: "Uncle", correct: "عم", options: ["عمة","عم","جزار","لص منازل"]},
+    {english: "Actor", correct: "ممثل", options: ["ممثل","مؤلف","أب","خباز"]},
+    {english: "Aunt", correct: "عمة", options: ["عمة","ممثلة","خَبّاز","محاسب"]},
+    {english: "Actress", correct: "ممثلة", options: ["نجار","ممثلة","جار","جزار"]},
+    {english: "Author", correct: "مؤلف", options: ["أب","مؤلف","بِكَر","لص منازل"]},
+    {english: "Baker", correct: "خباز", options: ["خباز","ممثلة","أخ","نجار"]},
+    {english: "Neighbor", correct: "جار", options: ["جار","مؤلف","عمة","جزار"]},
+    {english: "Butcher", correct: "جزار", options: ["جزار","أب","نجار","مؤلف"]},
+    {english: "Burglar", correct: "لص منازل", options: ["لص منازل","مؤلف","خباز","عمة"]},
+    {english: "Carpenter", correct: "نجار", options: ["عم","نجار","ممثلة","جزار"]}
+  ]
+};
+
+// Utilities
+function shuffleArray(arr){ for(let i=arr.length-1;i>0;i--){ const j=Math.floor(Math.random()*(i+1)); [arr[i],arr[j]]=[arr[j],arr[i]]; } }
+function createQuizPanel(mode, container){
+  const list = (mode==="ar") ? JSON.parse(JSON.stringify(data.arToEn)) : JSON.parse(JSON.stringify(data.enToAr));
+  shuffleArray(list);
+  container.innerHTML = "";
+  list.forEach((item, idx) => {
+    const q = document.createElement("div");
+    q.className = "question";
+    const qText = document.createElement("div");
+    qText.className = "q-text";
+    if(mode==="ar"){
+      qText.innerHTML = `<span>اختر الترجمة الصحيحة لكلمة:</span> <span style="font-size:18px;margin-left:8px;font-weight:900">${item.arabic}</span>`;
+    } else {
+      qText.innerHTML = `<span>What is the meaning of:</span> <span style="font-size:18px;margin-left:8px;font-weight:900">${item.english}</span>`;
+    }
+    q.appendChild(qText);
+
+    const opts = document.createElement("div");
+    opts.className = "options";
+    // shuffle options
+    shuffleArray(item.options);
+    item.options.forEach(optText => {
+      const opt = document.createElement("div");
+      opt.className = "opt";
+      opt.tabIndex = 0;
+      opt.setAttribute("role","button");
+      opt.textContent = optText;
+      opt.addEventListener("click", ()=> handleSelect(opt, item.correct, container));
+      opt.addEventListener("keypress", (e)=>{ if(e.key==="Enter") handleSelect(opt, item.correct, container); });
+      opts.appendChild(opt);
+    });
+
+    q.appendChild(opts);
+    container.appendChild(q);
+  });
+}
+
+function handleSelect(optElem, correctAnswer, container){
+  // ignore if already answered
+  const parent = optElem.closest(".question");
+  if(parent.classList.contains("answered")) return;
+  parent.classList.add("answered");
+  const options = parent.querySelectorAll(".opt");
+  options.forEach(o => {
+    if(o.textContent === correctAnswer){
+      o.classList.add("correct");
+    }
+    if(o === optElem && o.textContent !== correctAnswer){
+      o.classList.add("wrong");
+    }
+    // disable pointer
+    o.style.pointerEvents = "none";
+  });
+  // feedback text
+  const fb = document.createElement("div");
+  fb.className = "feedback";
+  fb.textContent = (optElem.textContent === correctAnswer) ? "إجابة صحيحة ✅" : `إجابة خاطئة ❌ — الإجابة الصحيحة: ${correctAnswer}`;
+  parent.appendChild(fb);
+  updateResult(container);
+}
+
+function updateResult(container){
+  const total = container.querySelectorAll(".question").length;
+  const answered = container.querySelectorAll(".question.answered").length;
+  const correct = container.querySelectorAll(".opt.correct").length;
+  // Note: correct count equals number of correctly revealed options (one per question). But some corrects revealed even if user didn't choose? We color correct always when answered; counting by questions that have chosen correctly:
+  let userCorrect = 0;
+  container.querySelectorAll(".question").forEach(q => {
+    const chosen = Array.from(q.querySelectorAll(".opt")).find(o => o.classList.contains("wrong") || o.classList.contains("correct") && o.classList.contains("opt")) ;
+    // better check user choice:
+    const userChoice = Array.from(q.querySelectorAll(".opt")).find(o => o.style.pointerEvents === "none" && (o.classList.contains("wrong") || o.classList.contains("correct")));
+    if(userChoice && userChoice.classList.contains("correct")) userCorrect++;
+  });
+
+  // Simplify: count questions where a chosen option has class correct
+  let chosenCorrect = 0;
+  container.querySelectorAll(".question").forEach(q => {
+    const chosen = Array.from(q.querySelectorAll(".opt")).find(o => o.style.pointerEvents === "none" && (o.classList.contains("wrong") || o.classList.contains("correct")));
+    if(chosen && chosen.classList.contains("correct")) chosenCorrect++;
+  });
+
+  const resultEl = document.getElementById("result");
+  resultEl.textContent = `الإجابات المختارة: ${answered} من ${total} — الإجابات الصحيحة من بينها: ${chosenCorrect}`;
+}
+
+// Initialization
+const quizDiv = document.getElementById("quiz");
+const tabAr = document.getElementById("tab-ar");
+const tabEn = document.getElementById("tab-en");
+let mode = "ar"; // 'ar' or 'en'
+createQuizPanel(mode, quizDiv);
+
+tabAr.addEventListener("click", ()=> { mode="ar"; tabAr.classList.add("active"); tabEn.classList.remove("active"); createQuizPanel(mode, quizDiv); document.getElementById("result").textContent = ""; });
+tabEn.addEventListener("click", ()=> { mode="en"; tabEn.classList.add("active"); tabAr.classList.remove("active"); createQuizPanel(mode, quizDiv); document.getElementById("result").textContent = ""; });
+
+document.getElementById("shuffleBtn").addEventListener("click", ()=> { createQuizPanel(mode, quizDiv); document.getElementById("result").textContent = ""; });
+document.getElementById("resetBtn").addEventListener("click", ()=> { createQuizPanel(mode, quizDiv); document.getElementById("result").textContent = ""; });
+
+document.getElementById("showScoreBtn").addEventListener("click", ()=> {
+  // compute score: count questions where selected option is correct
+  const total = quizDiv.querySelectorAll(".question").length;
+  let chosenCorrect = 0;
+  let answered = 0;
+  quizDiv.querySelectorAll(".question").forEach(q => {
+    const chosen = Array.from(q.querySelectorAll(".opt")).find(o => o.style.pointerEvents === "none" && (o.classList.contains("wrong") || o.classList.contains("correct")));
+    if(chosen){ answered++; if(chosen.classList.contains("correct")) chosenCorrect++; }
+  });
+  alert(`النتيجة:\nالإجابات المختارة: ${answered} من ${total}\nالإجابات الصحيحة من بينها: ${chosenCorrect}`);
+});
+
+// keyboard support for tab keys on tabs
+[tabAr, tabEn].forEach(tab => tab.addEventListener("keydown", (e)=>{ if(e.key==="Enter"||e.key===" ") tab.click(); }));
+</script>
+</body>
+</html>
